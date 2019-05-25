@@ -58,13 +58,13 @@ example:
 	
 	// Finally, in one of your service implementation's methods, the client's
 	// identity can be extracted from the given Context.
-	func (s *svcImpl) SomeMethod(ctx context.Context, req *SomeRequest, opts ...grpc.CallOption) (*SomeResponse, error {
+	func (s *svcImpl) SomeMethod(ctx context.Context, req *SomeRequest, opts ...grpc.CallOption) (*SomeResponse, error) {
 	    creds, err := peercredlistener.FromContext(ctx)
 	    // (Unless there's an error) creds now holds a *Ucred containing
 	    // the PID, UID and GID of the calling client process.
 	}
 
-NOTE: This package does not work with IP connection or on operating systems other than Linux.
+NOTE: This package does not work with IP connections or on operating systems other than Linux.
 
 
 
