@@ -1,9 +1,17 @@
 
-# peercredlistener
+# peercredlistener  [![Mit License][mit-img]][mit] [![GitHub Release][release-img]][release] [![GoDoc][godoc-img]][godoc] [![Go Report Card][reportcard-img]][reportcard] [![Build Status][travis-img]][travis]
+
 `import "toolman.org/net/peercredlistener"`
 
+* [Install](#pkg-install)
 * [Overview](#pkg-overview)
 * [Index](#pkg-index)
+
+## <a name="pkg-install">Install</a>
+
+```sh
+    go get toolman.org/net/peercredlistener
+```
 
 ## <a name="pkg-overview">Overview</a>
 Package peercredlistener provides PeerCredListener and supporting functions.
@@ -244,4 +252,19 @@ func (*Ucred) AuthType() string
 AuthType implements the grpc/credentials AuthInfo interface to enable
 plumbing *Ucred values through the gRPC framework.
 
+
+[mit-img]: http://img.shields.io/badge/License-MIT-c41e3a.svg
+[mit]: https://github.com/tep/net-peercredlistener/blob/master/LICENSE
+
+[release-img]: https://img.shields.io/github/release/tep/net-peercredlistener/all.svg
+[release]: https://github.com/tep/net-peercredlistener/releases
+
+[godoc-img]: https://godoc.org/toolman.org/net/peercredlistener?status.svg
+[godoc]: https://godoc.org/toolman.org/net/peercredlistener
+
+[reportcard-img]: https://goreportcard.com/badge/toolman.org/net/peercredlistener
+[reportcard]: https://goreportcard.com/report/toolman.org/net/peercredlistener
+
+[travis-img]: https://travis-ci.org/tep/net-peercredlistener.svg?branch=master
+[travis]: https://travis-ci.org/tep/net-peercredlistener
 
