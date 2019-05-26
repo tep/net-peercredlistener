@@ -1,4 +1,4 @@
-// Copyright 2018 Timothy E. Peoples
+// Copyright 2019 Timothy E. Peoples
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -18,7 +18,45 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
-package peercredlistener
+// Package pclcreds adds gRPC support to toolman.org/net/peercredlistener with
+// a ServerOption that help gRPC recognize PeerCredListeners and a helper
+// function for extracting process credentials from a service method's Context.
+//
+// The following example illistrates how to use a PeerCredListener with a
+// gRPC server over a Unix domain socket:
+//
+//      // As with a simple unix-domain socket server, we'll first create
+//      // a new PeerCredListener listening on socketName
+//      lsnr, err := peercredlistener.New(ctx, socketName)
+//      if err != nil {
+//          return err
+//      }
+//
+//      // We'll need to tell gRPC how to deal with the process credentials
+//      // acquired by the PeerCredListener. This is easily accomplished by
+//      // passing this package's TransportCredentials ServerOption as we
+//      // create the gRPC Server.
+//      svr := grpc.NewServer(pclcreds.TransportCredentials())
+//
+//      // Next, we'll install your service implementation into the gRPC
+//      // Server we just created...
+//      urpb.RegisterYourService(svr, svcImpl)
+//
+//      // ...and start the gRPC Server using the PeerCredListener created
+//      // above.
+//      svr.Serve(lsnr)
+//
+//  Finally, when you need to access the client's process creds from one of
+//  your service's methods, pass the method's Context to this package's
+//  FromContext function.
+//
+//      func (s *svcImpl) SomeMethod(ctx context.Context, req *SomeRequest, opts ...grpc.CallOption) (*SomeResponse, error) {
+//          creds, err := pclcreds.FromContext(ctx)
+//          // (Unless there's an error) creds now holds a *unix.Ucred
+//          // containing the PID, UID and GID of the calling client process.
+//      }
+//
+package pclcreds
 
 import (
 	"context"
@@ -30,6 +68,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
+
+	"toolman.org/net/peercredlistener"
 )
 
 // ErrNoPeer is returned by FromContext if the provided Context contains
@@ -59,8 +99,8 @@ func (pc *peerCredentials) ClientHandshake(context.Context, string, net.Conn) (n
 
 func (pc *peerCredentials) ServerHandshake(conn net.Conn) (net.Conn, credentials.AuthInfo, error) {
 	var info credentials.AuthInfo
-	if pcConn, ok := conn.(*PeerCredConn); ok {
-		info = pcConn.AuthInfo()
+	if pcConn, ok := conn.(*peercredlistener.PeerCredConn); ok {
+		info = (*ucred)(pcConn.Ucred)
 	}
 	return conn, info, nil
 }
@@ -83,31 +123,31 @@ func (pc *peerCredentials) Clone() credentials.TransportCredentials {
 
 func (*peerCredentials) OverrideServerName(string) error { return nil }
 
-// Ucred is a wrapper around the Ucred struct from golang.org/x/sys/unix
+// ucred is a wrapper around the Ucred struct from golang.org/x/sys/unix
 // allowing it to be used as the AuthInfo member of a gRPC peer.
 //
 // This is part of the mechanism used for plumbing *Ucred values through
 // the gRPC framework and is not intended for general use.
-type Ucred unix.Ucred
+type ucred unix.Ucred
 
 // AuthType implements the grpc/credentials AuthInfo interface to enable
 // plumbing *Ucred values through the gRPC framework.
-func (*Ucred) AuthType() string { return "PeerCred" }
+func (*ucred) AuthType() string { return "PeerCred" }
 
 // FromContext extracts peer process credentials, if any, from the given
 // Context. If the Context has no gRPC peer, ErrNoPeer is returned. If the
 // Context's peer is of the wrong type (i.e. contains no peer process
 // credentials), ErrNoCredentials will be returned.
-func FromContext(ctx context.Context) (*Ucred, error) {
+func FromContext(ctx context.Context) (*unix.Ucred, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return nil, ErrNoPeer
 	}
 
-	c, ok := p.AuthInfo.(*Ucred)
+	c, ok := p.AuthInfo.(*ucred)
 	if !ok {
 		return nil, ErrNoCredentials
 	}
 
-	return c, nil
+	return (*unix.Ucred)(c), nil
 }

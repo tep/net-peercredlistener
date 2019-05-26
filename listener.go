@@ -1,4 +1,4 @@
-// Copyright 2018 Timothy E. Peoples
+// Copyright 2019 Timothy E. Peoples
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -24,10 +24,11 @@
 // Linux based, Unix domain sockets to garner the PID, UID, and GID of the
 // client side connection.
 //
-// PeerCredListener is intended for use cases where a Unix domain server needs
-// to reliably identify the process on the client side of each connection. This
-// behavior is supported both for simple socket connections or via gRPC.  In
-// either case, no changes to the client are needed for proper functionality.
+// PeerCredListener is intended for use cases where a unix-domain server needs
+// to reliably identify the process on the client side of each connection. By
+// itself, peercredlistener provides support for simple socket connections.
+// Additional support for gRPC over unix-domain sockets is available with the
+// subordinate package toolman.org/net/peercredlistener/pclcreds.
 //
 // A simple, unix-domain server can be written similar to the following:
 //
@@ -46,34 +47,6 @@
 //      // conn.Ucred has fields Pid, Uid and Gid
 //      fmt.Printf("Client PID=%d UID=%d\n", conn.Ucred.Pid, conn.Ucred.Uid)
 //
-//
-// Using PeerCredListener with a gRPC server is illustrated with the following
-// example:
-//
-//      // As above, create a new PeerCredListener listening on socketName
-//      lsnr, err := peercredlistener.New(ctx, socketName)
-//      if err != nil {
-//          return err
-//      }
-//
-//      // Create a new gRPC Server using this package's TransportCredentials
-//      // ServerOption to tunnel each client's process credentials from the
-//      // PeerCredListener through the gRPC framework.
-//      svr := grpc.NewServer(peercredlistener.TransportCredentials())
-//
-//      // Install your service implementation into the gRPC Server.
-//      urpb.RegisterYourService(svr, svcImpl)
-//
-//      // Start the gRPC Server using the PeerCredListener created above.
-//      svr.Serve(lsnr)
-//
-//      // Finally, in one of your service implementation's methods, the client's
-//      // identity can be extracted from the given Context.
-//      func (s *svcImpl) SomeMethod(ctx context.Context, req *SomeRequest, opts ...grpc.CallOption) (*SomeResponse, error) {
-//          creds, err := peercredlistener.FromContext(ctx)
-//          // (Unless there's an error) creds now holds a *Ucred containing
-//          // the PID, UID and GID of the calling client process.
-//      }
 //
 // NOTE: This package does not work with IP connections or on operating systems other than Linux.
 //
@@ -94,8 +67,7 @@ const ErrAddrInUse = unix.EADDRINUSE
 // PeerCredListener is an implementation of net.Listener that extracts the
 // identity (i.e. pid, uid, gid) from the calling connection. This information
 // is available either from the Ucred member of the *PeerCredConn returned by
-// AcceptPeerCred or, when used in a gRPC environment, by passing a server
-// method's Context to the FromContext function.
+// AcceptPeerCred.
 type PeerCredListener struct {
 	net.Listener
 }
@@ -117,7 +89,7 @@ func New(ctx context.Context, addr string) (*PeerCredListener, error) {
 // be accessed through a type assertion. See AcceptPeerCred for
 // details on possible error conditions.
 //
-// Accept contributes to implementing the  net.Conn interface.
+// Accept contributes to implementing the  net.Listener interface.
 func (pcl *PeerCredListener) Accept() (net.Conn, error) {
 	return pcl.AcceptPeerCred()
 }
@@ -156,7 +128,7 @@ func (pcl *PeerCredListener) AcceptPeerCred() (*PeerCredConn, error) {
 		return nil, err
 	}
 
-	pcc.Ucred = (*Ucred)(ucred)
+	pcc.Ucred = ucred
 
 	return pcc, nil
 }
@@ -164,13 +136,8 @@ func (pcl *PeerCredListener) AcceptPeerCred() (*PeerCredConn, error) {
 // PeerCredConn is a net.Conn containing the process credentials for the client
 // side of a Unix domain socket connection.
 type PeerCredConn struct {
-	Ucred *Ucred
+	Ucred *unix.Ucred
 	net.Conn
-}
-
-// AuthInfo returns the peer process credentials for this connection.
-func (pcc *PeerCredConn) AuthInfo() *Ucred {
-	return pcc.Ucred
 }
 
 func chkAddrInUseError(err error) error {
