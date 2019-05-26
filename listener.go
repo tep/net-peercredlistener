@@ -64,10 +64,11 @@ import (
 // EADDRINUSE.
 const ErrAddrInUse = unix.EADDRINUSE
 
-// PeerCredListener is an implementation of net.Listener that extracts the
-// identity (i.e. pid, uid, gid) from the calling connection. This information
-// is available either from the Ucred member of the *PeerCredConn returned by
-// AcceptPeerCred.
+// PeerCredListener is an implementation of net.Listener that extracts
+// the identity (i.e. pid, uid, gid) from the connection's client process.
+// This information is then made available through the Ucred member of
+// the *PeerCredConn returned by AcceptPeerCred or Accept (after a type
+// assertion).
 type PeerCredListener struct {
 	net.Listener
 }
