@@ -14,7 +14,7 @@
 
 ## <a name="pkg-overview">Overview</a>
 Package pclcreds adds gRPC support to toolman.org/net/peercredlistener with
-a ServerOption that help gRPC recognize PeerCredListeners and a helper
+a ServerOption that helps gRPC recognize PeerCredListeners and a helper
 function for extracting process credentials from a service method's Context.
 
 The following example illistrates how to use a PeerCredListener with a
