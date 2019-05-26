@@ -91,7 +91,12 @@ func New(ctx context.Context, addr string) (*PeerCredListener, error) {
 //
 // Accept contributes to implementing the  net.Listener interface.
 func (pcl *PeerCredListener) Accept() (net.Conn, error) {
-	return pcl.AcceptPeerCred()
+	switch conn, err := pcl.AcceptPeerCred(); err {
+	case nil:
+		return conn, nil
+	default:
+		return nil, err
+	}
 }
 
 // AcceptPeerCred accepts a connection from the receiver's listener
